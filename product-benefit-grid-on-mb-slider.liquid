@@ -1,0 +1,165 @@
+{%- liquid
+  assign target_mf = nil
+  
+  # Determine if we have Metafields available (as fallback)
+  if product
+    if product.metafields.custom.benefit_1st_box_heading != blank
+      assign target_mf = product.metafields.custom
+    else
+      for col in product.collections
+        if col.metafields.custom.benefit_1st_box_heading != blank
+          assign target_mf = col.metafields.custom
+          break
+        endif
+      endfor
+    endif
+  elsif collection
+    if collection.metafields.custom.benefit_1st_box_heading != blank
+      assign target_mf = collection.metafields.custom
+    endif
+  endif
+
+  # Capture slides logic
+  capture slides_html
+    for block in section.blocks
+      # Initialize with Customizer (Block) settings - This is now Priority 1
+      assign display_title = block.settings.title
+      assign display_text = block.settings.text
+
+      # If Customizer title is empty, check Metafields (Priority 2 & 3)
+      if display_title == blank and target_mf != nil
+        case forloop.index
+          when 1
+            if target_mf.benefit_1st_box_heading != blank
+              assign display_title = target_mf.benefit_1st_box_heading
+              assign display_text = target_mf.benefit_1st_box_description | metafield_tag
+            endif
+          when 2
+            if target_mf.benefit_2nd_box_heading != blank
+              assign display_title = target_mf.benefit_2nd_box_heading
+              assign display_text = target_mf.benefit_2nd_box_description | metafield_tag
+            endif
+          when 3
+            if target_mf.benefit_3rd_box_heading != blank
+              assign display_title = target_mf.benefit_3rd_box_heading
+              assign display_text = target_mf.benefit_3rd_box_description | metafield_tag
+            endif
+          when 4
+            if target_mf.benefit_4th_box_heading != blank
+              assign display_title = target_mf.benefit_4th_box_heading
+              assign display_text = target_mf.benefit_4th_box_description | metafield_tag
+            endif
+        endcase
+      endif
+
+      # Render slide if title exists (either from Customizer or Metafield)
+      if display_title != blank
+        echo '<div class="swiper-slide" ' | append: block.shopify_attributes | append: '>'
+        echo '  <div class="feat-card '
+        if block.settings.highlight
+          echo 'feat-highlight'
+        endif
+        echo '">'
+        echo '    <div class="feat-icon">'
+        if block.settings.icon_svg != blank
+          echo block.settings.icon_svg
+        endif
+        echo '    </div>'
+        echo '    <h3 class="feat-title">' | append: display_title | append: '</h3>'
+        if display_text != blank
+          echo '    <div class="feat-desc">' | append: display_text | append: '</div>'
+        endif
+        echo '  </div>'
+        echo '</div>'
+      endif
+    endfor
+  endcapture
+
+  assign slides_html = slides_html | strip
+-%}
+
+{%- if slides_html != "" -%}
+<!-- Swiper CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+
+<section class="feat-slider-section section-{{ section.id }}">
+  <div class="feat-container">
+    <div class="swiper featSwiper-{{ section.id }}">
+      <div class="swiper-wrapper">
+        {{ slides_html }}
+      </div>
+      <div class="swiper-pagination feat-pagination-{{ section.id }}"></div>
+    </div>
+  </div>
+</section>
+
+{% style %}
+  :root { --feat-neon: #D5FE3E; --feat-bg-dark: #000000; --feat-transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
+  .section-{{ section.id }} { background: #F2F2F2; padding-top: {{ section.settings.padding_top_mobile }}px; padding-bottom: {{ section.settings.padding_bottom_mobile }}px; width: 100%; overflow: hidden; }
+  @media screen and (min-width: 768px) { .section-{{ section.id }} { padding-top: {{ section.settings.padding_top_desktop }}px; padding-bottom: {{ section.settings.padding_bottom_desktop }}px; } }
+  .feat-container { max-width: 1600px; margin: 0 auto; padding: 0 20px; }
+  .feat-card { padding: 50px 35px; display: flex; flex-direction: column; height: 100%; min-height: 350px; background: var(--feat-bg-dark); transition: var(--feat-transition); cursor: grab; border-left: 3px solid #D5FE3E; }
+  .feat-card:not(.feat-highlight):hover { background-color: var(--feat-neon); transform: translateY(-10px); }
+  .feat-card:not(.feat-highlight):hover .feat-title, .feat-card:not(.feat-highlight):hover .feat-desc, .feat-card:not(.feat-highlight):hover .feat-icon { color: #000; }
+  .feat-highlight { background-color: var(--feat-neon); color: #000; border-left: 3px solid #000000;}
+  .feat-highlight .feat-title, .feat-highlight .feat-icon { color: #000; }
+  .feat-highlight .feat-desc { color: #000; opacity: 0.8; }
+  .feat-highlight:hover { background-color: #000; transform: translateY(-10px); border-color: var(--feat-neon); }
+  .feat-highlight:hover .feat-title, .feat-highlight:hover .feat-icon { color: var(--feat-neon); }
+  .feat-highlight:hover .feat-desc { color: #fff; opacity: 1; }
+  .feat-icon { width: 45px; height: 45px; margin-bottom: 30px; color: var(--feat-neon); }
+  .feat-icon svg { width: 100%; height: 100%; display: block; }
+  .feat-icon svg path, .feat-icon svg circle, .feat-icon svg rect { stroke: currentColor !important; -webkit-text-stroke: 1px; transition: var(--feat-transition); }
+  .feat-title { font-family: "Quantico", sans-serif; font-weight: 700; text-transform: uppercase; margin-bottom: 15px; color: #fff; font-size: clamp(1.4rem, 2.5vw, 1.8rem); line-height: 1.1; }
+  .feat-desc { font-size: 15px; line-height: 1.6; color: #a0a0a0; margin: 0; }
+  .feat-desc p { margin: 0; color: inherit; font-size: inherit; line-height: inherit; }
+  .feat-pagination-{{ section.id }} { position: relative !important; margin-top: 30px !important; }
+  .feat-pagination-{{ section.id }} .swiper-pagination-bullet { background: #000 !important; opacity: 0.3; }
+  .feat-pagination-{{ section.id }} .swiper-pagination-bullet-active { background: var(--feat-neon) !important; opacity: 1; }
+{% endstyle %}
+
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    new Swiper('.featSwiper-{{ section.id }}', {
+      slidesPerView: 1.2,
+      spaceBetween: 10,
+      grabCursor: true,
+      watchOverflow: true,
+      centerInsufficientSlides: true, 
+      pagination: { el: ".feat-pagination-{{ section.id }}", clickable: true },
+      breakpoints: {
+        640: { slidesPerView: 1.6, spaceBetween: 10 },
+        1024: { slidesPerView: 2, spaceBetween: 10 },
+        1200: { slidesPerView: 4, spaceBetween: 10 }
+      }
+    });
+  });
+</script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Product Grid Slider",
+  "settings": [
+    { "type": "range", "id": "padding_top_desktop", "min": 0, "max": 200, "step": 2, "default": 100, "unit": "px", "label": "Desktop Top" },
+    { "type": "range", "id": "padding_bottom_desktop", "min": 0, "max": 200, "step": 2, "default": 100, "unit": "px", "label": "Desktop Bottom" },
+    { "type": "range", "id": "padding_top_mobile", "min": 0, "max": 150, "step": 2, "default": 60, "unit": "px", "label": "Mobile Top" },
+    { "type": "range", "id": "padding_bottom_mobile", "min": 0, "max": 150, "step": 2, "default": 60, "unit": "px", "label": "Mobile Bottom" }
+  ],
+  "blocks": [
+    {
+      "type": "benefit",
+      "name": "Feature Card",
+      "settings": [
+        { "type": "header", "content": "Manual Content", "info": "If you fill these out, they will be used. Leave Title empty to use Metafields instead." },
+        { "type": "checkbox", "id": "highlight", "label": "Highlight Card", "default": false },
+        { "type": "html", "id": "icon_svg", "label": "SVG Code" },
+        { "type": "text", "id": "title", "label": "Title (Priority 1)" },
+        { "type": "textarea", "id": "text", "label": "Text (Priority 1)" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Product Grid Slider" }]
+}
+{% endschema %}
